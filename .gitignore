@@ -1,0 +1,16 @@
+artifacts/
+work/
+bin/
+obj/
+.vs/
+settings.json
+*.exe
+*.pdb
+*.zip
+*.log
+*.sqlite*
+*.jsonl
+*diagnos*.json
+*usage-check*.json
+*.user
+*.tmp

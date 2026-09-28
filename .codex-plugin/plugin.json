@@ -1,0 +1,21 @@
+{
+  "name": "codex-connection-monitor",
+  "version": "1.3.0",
+  "description": "Windows 悬浮窗与彩色托盘，显示 Codex 连接证据、网络探测和账号剩余额度。",
+  "author": {
+    "name": "B站那年松江"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex 连接灯",
+    "shortDescription": "看清当前任务是否出现连接中断",
+    "longDescription": "独立 Windows 伴随工具：只读分析本地连接日志，托盘综合显示连接状态，通过官方本机 Codex 读取剩余额度和重置时间，提供独立 HTTPS 入口探测。",
+    "developerName": "B站那年松江",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "打开 Codex 连接灯悬浮窗。",
+    "brandColor": "#148B65",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

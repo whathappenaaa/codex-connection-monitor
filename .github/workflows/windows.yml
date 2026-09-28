@@ -1,0 +1,17 @@
+name: Windows build and tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and offline tests
+        shell: pwsh
+        run: ./scripts/test.ps1
+      - name: Offline account transport and timeout
+        shell: pwsh
+        run: ./scripts/test-transport.ps1
