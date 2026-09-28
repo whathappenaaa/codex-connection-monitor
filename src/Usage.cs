@@ -115,7 +115,7 @@ public sealed class UsageClient : IDisposable {
         child.OutputDataReceived+=(s,e)=>ReadLine(e.Data);child.ErrorDataReceived+=(s,e)=>{};
         child.EnableRaisingEvents=true;child.Exited+=(s,e)=>RejectPending();
         child.Start();child.BeginOutputReadLine();child.BeginErrorReadLine();
-        await Call("initialize",new {clientInfo=new {name="codex_connection_monitor",title="Codex Connection Monitor",version="1.3.0"}});
+        await Call("initialize",new {clientInfo=new {name="codex_connection_monitor",title="Codex Connection Monitor",version="1.3.1"}});
         child.StandardInput.WriteLine(serializer.Serialize(new {method="initialized",@params=new {}}));child.StandardInput.Flush();
     }
     void ReadLine(string line) {

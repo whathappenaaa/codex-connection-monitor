@@ -117,6 +117,8 @@ public class LogReader {
     long cursor=-1;
     DateTime discovery=DateTime.MinValue;
     string desktopFile="";
+    public bool DesktopLogAvailable {get{return File.Exists(desktopFile);}}
+    public bool DesktopLogPackaged {get{return DesktopLogSource.IsPackaged(desktopFile);}}
     long desktopOffset;
     string partial="";
     static readonly Regex ActivePattern=new Regex(@"thread_stream_view_activity_changed active=true conversationId=([a-fA-F0-9-]{36})\b");
@@ -131,8 +133,7 @@ public class LogReader {
                 string found=Directory.GetFiles(codex,"logs_*.sqlite").OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
                 if(found==null) throw new IOException("没有找到 Codex 日志数据库");
                 if(found!=DatabasePath) { DatabasePath=found; cursor=-1; States.Clear(); }
-                string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Codex","Logs");
-                string f=Directory.Exists(root)?Directory.GetFiles(root,"*-t0-*.log",SearchOption.AllDirectories).OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault():null;
+                string f=DesktopLogSource.Find(DesktopLogSource.Roots(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)));
                 if(f!=null && f!=desktopFile) { desktopFile=f; desktopOffset=0; partial=""; ActiveThread=""; }
             }
             ReadActive();
@@ -194,7 +195,7 @@ public static class Probes {
         ProbeResult p=new ProbeResult(); Stopwatch watch=Stopwatch.StartNew(); HttpWebRequest req=null;
         try {
             req=(HttpWebRequest)WebRequest.Create(url); req.Method="HEAD"; req.Timeout=6500; req.ReadWriteTimeout=6500;
-            req.AllowAutoRedirect=false; req.UserAgent="CodexConnectionMonitor/1.3.0"; req.KeepAlive=false;
+            req.AllowAutoRedirect=false; req.UserAgent="CodexConnectionMonitor/1.3.1"; req.KeepAlive=false;
             string proxy=Environment.GetEnvironmentVariable("HTTPS_PROXY")??Environment.GetEnvironmentVariable("https_proxy");
             Uri proxyUri;
             if(!String.IsNullOrEmpty(proxy) && Uri.TryCreate(proxy,UriKind.Absolute,out proxyUri)) {
@@ -237,7 +238,7 @@ public static class Program {
         if(args.Length>=2 && args[0]=="--diagnose") {
             LogReader r=new LogReader();r.Poll();ThreadState s=r.Selected("");
             ProbeResult[] probes=Task.WhenAll(Probes.Run("https://www.microsoft.com/favicon.ico"),Probes.Run("https://chatgpt.com/")).GetAwaiter().GetResult();
-            File.WriteAllText(args[1],new JavaScriptSerializer().Serialize(new {sourceOk=r.Ok,sourceError=r.Error,activeThread=r.ActiveThread,taskName=s==null?"":r.Catalog.Name(s.Id),catalogAvailable=r.Catalog.Available,trackedThreads=r.States.Count,status=Rules.Evaluate(s,Rules.Now(),r.Ok),lastResponse=s==null?0:s.LastResponse,publicProbe=probes[0],chatgptProbe=probes[1]}),Encoding.UTF8);return;
+            File.WriteAllText(args[1],new JavaScriptSerializer().Serialize(new {sourceOk=r.Ok,sourceError=r.Error,desktopLogAvailable=r.DesktopLogAvailable,desktopLogPackaged=r.DesktopLogPackaged,activeThread=r.ActiveThread,taskName=s==null?"":r.Catalog.Name(s.Id),catalogAvailable=r.Catalog.Available,trackedThreads=r.States.Count,status=Rules.Evaluate(s,Rules.Now(),r.Ok),lastResponse=s==null?0:s.LastResponse,publicProbe=probes[0],chatgptProbe=probes[1]}),Encoding.UTF8);return;
         }
         string capture=args.Length>=2 && args[0]=="--capture"?args[1]:null;
         bool test=args.Length>=2 && (args[0]=="--ui-test" || args[0]=="--layout-test");
@@ -315,7 +316,7 @@ public static class Tests {
                 var codec=new JavaScriptSerializer();MonitorSettings roundTrip=codec.Deserialize<MonitorSettings>(codec.Serialize(new MonitorSettings {language="en",size="medium",autoFit=false}));
                 Check(roundTrip.language=="en" && roundTrip.size=="medium" && !roundTrip.autoFit,"language and size settings persist together");
             }
-            int featureCount=FeatureTests.Run();File.WriteAllText(output,"PASS "+count+" legacy + "+featureCount+" tray/quota tests",Encoding.UTF8);
+            int featureCount=FeatureTests.Run();int desktopCount=DesktopLogTests.Run();File.WriteAllText(output,"PASS "+count+" legacy + "+featureCount+" tray/quota + "+desktopCount+" desktop log tests",Encoding.UTF8);
         } catch(Exception e) {File.WriteAllText(output,e.ToString(),Encoding.UTF8);Environment.ExitCode=1;}
     }
 }

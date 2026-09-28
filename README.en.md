@@ -30,6 +30,8 @@ Missing values stay unavailable. Failed refreshes retain a clearly marked old sn
 
 Connection evidence and task names are read locally from Codex SQLite databases and desktop logs. Two unauthenticated HEAD probes access Microsoft and ChatGPT public endpoints every 15 seconds. There is no custom backend, chat upload, or application telemetry. The endpoints still receive ordinary connection metadata. Settings are stored beside the executable. Classified error history and quota snapshots remain in memory.
 
+Version 1.3.1 checks both `%LOCALAPPDATA%\Codex\Logs` and the explicit `%LOCALAPPDATA%\Packages\OpenAI.Codex_*\LocalCache\Local\Codex\Logs` cache. This fixes Store installations that leave an empty ordinary-path placeholder when the monitor is launched independently from Explorer. Missing current-task evidence still stays unknown instead of borrowing another task's status.
+
 This is an independent, unofficial tool. Local Codex log formats can change. It does not repair network issues. The release is unsigned and does not include an installer or updater.
 
 ## Development

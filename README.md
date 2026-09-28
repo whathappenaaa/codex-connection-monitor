@@ -12,7 +12,7 @@
 
 ## 开始使用
 
-1. 在 Releases 下载 `codex-connection-monitor-v1.3.0-win-x64-portable.zip`，完整解压到可写目录。
+1. 在 Releases 下载 `codex-connection-monitor-v1.3.1-win-x64-portable.zip`，完整解压到可写目录。
 2. 双击 `CodexConnectionMonitor.exe`。无需安装 Python、Node.js，也无需输入 API Key。
 3. 打开并登录 Codex，在一个任务里产生新的活动。必要时用“选择任务”固定监测对象。
 4. 关闭窗口会收起到托盘；双击托盘恢复。彻底退出使用托盘右键菜单。
@@ -55,6 +55,8 @@
 3. **额度**：每 60 秒短时启动官方 `codex app-server`，通过本地标准输入输出读取账号状态和额度，由 Codex 管理登录并向官方服务查询。连接灯不读取或保存令牌，不发起模型任务。
 
 没有自建服务器、聊天上传或软件内分析统计；官方 Codex 自身的行为仍受其配置约束。额度只缓存在内存；显示偏好保存为程序目录内 `settings.json`。原始账户响应和辅助进程错误输出不落盘。连接历史只保留最近 30 条分类错误于内存。
+
+桌面活动日志同时检查 `%LOCALAPPDATA%\Codex\Logs` 和 `%LOCALAPPDATA%\Packages\OpenAI.Codex_*\LocalCache\Local\Codex\Logs`。商店版可能只在后者写入真实内容，1.3.1 修复了独立启动时读到普通目录空文件的问题。
 
 有显式代理环境变量时沿用；否则为额度辅助进程转交 Windows 系统代理，**仅影响该子进程**。网络探测与 Codex 的真实请求路径仍可能不同。
 
