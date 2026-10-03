@@ -179,7 +179,7 @@ public partial class MonitorForm : Form {
         StartNetworkObserver();
         ready=true;ApplySize(sizeMode,false);ApplyLanguage();
         Shown+=(s,e)=>{ApplySize(sizeMode,false);ResizeWraps();if(!testing){FitContent();Poll();}};
-        tick.Interval=1000;tick.Tick+=(s,e)=>{if(!testing)Poll();RefreshView();};tick.Start();
+        tick.Interval=MonitorTiming.LogIntervalMs;tick.Tick+=(s,e)=>{if(!testing)Poll();RefreshView();};tick.Start();
         FormClosing+=(s,e)=>{if(!exit && !screenshot && e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Hide();}};
         FormClosed+=(s,e)=>{tick.Stop();tick.Dispose();if(taskMenu!=null)taskMenu.Dispose();if(tray!=null){tray.Visible=false;tray.Icon=null;if(tray.ContextMenuStrip!=null)tray.ContextMenuStrip.Dispose();tray.Dispose();tray=null;}StopMonitoring();hints.Dispose();logo.Image.Dispose();Icon.Dispose();};
         Resize+=(s,e)=>{if(WindowState==FormWindowState.Minimized)Hide();};
@@ -205,7 +205,7 @@ public partial class MonitorForm : Form {
         sizeSmall.Text=Locale.Pick("小","S");sizeMedium.Text=Locale.Pick("中","M");sizeLarge.Text=Locale.Pick("大","L");autoFit.Text=sizeMode=="small"?Locale.Pick("自适应","Auto"):Locale.Pick("自动适配","Auto fit");
         hints.SetToolTip(sizeSmall,Locale.Pick("小号：紧凑状态面板","Small: compact status panel"));hints.SetToolTip(sizeMedium,Locale.Pick("中号：状态与说明","Medium: status and explanation"));hints.SetToolTip(sizeLarge,Locale.Pick("大号：完整信息","Large: full details"));
         hints.SetToolTip(autoFit,Locale.Pick("根据内容、语言和屏幕空间自动调整高度；拖动边框后切换为手动。","Fit height to content, language and available screen space. Dragging a border switches to manual sizing."));
-        footnote.Text=Locale.Pick("入口可达不代表对话畅通；灰色表示证据不足。","A reachable endpoint does not guarantee a working chat. Gray means insufficient evidence.");author.Text=Locale.Pick("作者：B站那年松江","Author: B站那年松江");
+        footnote.Text=Locale.Pick("绿色仅表示未检测到断开；灰色表示无法确认。","Green means no disconnect detected. Gray means unconfirmed.");author.Text=Locale.Pick("作者：B站那年松江","Author: B站那年松江");
         if(tray!=null){ContextMenuStrip old=tray.ContextMenuStrip;ContextMenuStrip menu=new ContextMenuStrip();menu.Items.Add(Locale.Pick("显示悬浮窗","Show monitor"),null,(s,e)=>Restore());menu.Items.Add(Locale.Pick("立即检测","Check now"),null,(s,e)=>CheckNow());menu.Items.Add(Locale.Pick("指定 Codex 程序…","Select Codex executable…"),null,(s,e)=>SelectCodex());menu.Items.Add(Locale.Pick("退出连接灯","Exit monitor"),null,(s,e)=>{exit=true;Close();});tray.ContextMenuStrip=menu;if(old!=null)old.Dispose();}
         RefreshView();ResizeWraps();ScheduleFit();
     }
@@ -264,36 +264,28 @@ public partial class MonitorForm : Form {
         }
         taskMenu.Show(picker,new Point(0,picker.Height));
     }
-    async void Poll(){
-        PollUsage(false);
-        long now=Rules.Now();
-        if(!logBusy && now-lastLog>=2){logBusy=true;lastLog=now;try{await Task.Run(()=>{lock(gate)reader.Poll();});if(!IsDisposed)RefreshView();}finally{logBusy=false;}}
-        if(!probeBusy && now-lastProbe>=15){probeBusy=true;lastProbe=now;try{ProbeResult[] results=await Task.WhenAll(Probes.Run("https://www.microsoft.com/favicon.ico"),Probes.Run("https://chatgpt.com/"));internet=results[0];service=results[1];}finally{probeBusy=false;}
-            if(!IsDisposed){RefreshView();if(screenshot){await Task.Delay(300);if(!IsDisposed){SaveCapture(capturePath);exit=true;Close();}}}
-        }
-    }
     static Color StatusColor(string code){switch(code){case "ok":return Color.FromArgb(18,137,104);case "error":return Color.FromArgb(204,61,73);case "warning":return Color.FromArgb(167,105,27);case "idle":return Color.FromArgb(53,116,164);default:return Color.FromArgb(113,130,135);}}
     void RefreshView(){
         if(IsDisposed)return;lock(gate){
-            ThreadState s=reader.Selected(selected);DisplayState d=Rules.Evaluate(s,Rules.Now(),reader.Ok);
+            ThreadState s=reader.Selected(selected);DisplayState d=ConnectionRules.Evaluate(s,reader.Ok,networkAvailable,internet,service,Rules.Now(),networkChangedAt);
             taskTitle.Text=s==null?Locale.Pick("尚未识别当前任务","Current task not identified"):reader.Catalog.Name(s.Id);
             string source=selected==""?Locale.Pick("自动跟随","Following Codex"):Locale.Pick("固定任务","Pinned task");
             taskMeta.Text=s==null?Locale.Pick("请选择任务；不会自动使用其他任务的记录。","Choose a task. Another task's activity will not be used."):source+" · "+ShortId(s.Id);
-            hints.SetToolTip(taskTitle,s==null?"":taskTitle.Text+"\n"+s.Id);statusTitle.Text=Locale.T(d.Title);statusTitle.ForeColor=StatusColor(d.Code);statusDetail.Text=Locale.T(d.Detail);
+            hints.SetToolTip(taskTitle,s==null?"":taskTitle.Text+"\n"+s.Id);statusTitle.Text=Locale.T(d.Title);statusTitle.ForeColor=StatusColor(d.Code);statusDetail.Text=Locale.T(d.Detail);hints.SetToolTip(statusTitle,statusDetail.Text);
             responseValue.Text=Locale.Age(s==null?0:s.LastResponse);errorValue.Text=s==null||s.Failure==null?(sizeMode=="small"?Locale.Pick("无记录","None"):Locale.Pick("未捕捉到","None recorded")):Locale.Age(s.Failure.Time);
-            errorValue.ForeColor=s!=null && s.Failure!=null?StatusColor("warning"):Ink;
-            updateNote.Text=reader.Ok?Locale.Pick("日志每 2 秒更新 · 网络每 15 秒探测","Logs: every 2s · Network probes: every 15s"):Locale.Pick("日志不可用：","Logs unavailable: ")+Locale.T(reader.Error);
+            errorValue.ForeColor=s!=null && s.Last!=null && s.Last.Kind=="error"?StatusColor("error"):Muted;
+            updateNote.Text=reader.Ok?Locale.Pick("日志每 0.5 秒更新 · 网络每 3 秒探测","Logs: every 0.5s · Network probes: every 3s"):Locale.Pick("日志不可用：","Logs unavailable: ")+Locale.T(reader.Error);
             UpdateTray(d);
         }
         RenderUsage();ProbeView(publicValue,internet);ProbeView(serviceValue,service);ResizeWraps();ScheduleFit();
     }
     static string ShortId(string id){return id.Length>18?id.Substring(0,8)+"…"+id.Substring(id.Length-6):id;}
     void ProbeView(Label label,ProbeResult probe){
-        label.ForeColor=probe.Time==0?Muted:StatusColor(probe.Reached && probe.Status<400?"ok":"warning");
+        label.ForeColor=probe.Time==0?Muted:StatusColor(probe.Reached?"ok":"error");
         label.Text=probe.Time==0?Locale.Pick("检测中…","Checking…"):probe.Reached?(probe.Status>=400?Locale.Pick("入口响应 · HTTP ","Responded · HTTP ")+probe.Status:Locale.Pick("可达 · ","Reachable · ")+probe.Ms+" ms"):Locale.T(probe.Error);
-        if(probe.Time>0 && Rules.Now()-probe.Time>35){label.Text=Locale.Pick("结果已过期","Result is stale");label.ForeColor=Muted;}
+        if(probe.Time>0 && !ConnectionRules.Fresh(probe,Rules.Now())){label.Text=Locale.Pick("结果已过期","Result is stale");label.ForeColor=Muted;}
     }
-    void UpdateTray(DisplayState d){if(tray==null)return;DisplayState combined=TrayRules.Evaluate(d,networkAvailable,internet,service,Rules.Now());string title="Codex · "+Locale.T(combined.Title)+(combined.Code=="error" && combined.Detail!=""?"\n"+Locale.T(combined.Detail):"")+"\n"+usage.Summary(Rules.Now());tray.Text=title.Length>63?title.Substring(0,63):title;if(combined.Code==lastCode)return;lastCode=combined.Code;Icon next;if(!trayIcons.TryGetValue(lastCode,out next)){next=TrayBrand.Create(lastCode,StatusColor(lastCode));trayIcons[lastCode]=next;}tray.Icon=next;trayIcon=next;}
+    void UpdateTray(DisplayState d){if(tray==null)return;DisplayState combined=d;string title="Codex · "+Locale.T(combined.Title)+(combined.Code=="error" && combined.Detail!=""?"\n"+Locale.T(combined.Detail):"")+"\n"+usage.Summary(Rules.Now());tray.Text=title.Length>63?title.Substring(0,63):title;if(combined.Code==lastCode)return;lastCode=combined.Code;Icon next;if(!trayIcons.TryGetValue(lastCode,out next)){next=TrayBrand.Create(lastCode,StatusColor(lastCode));trayIcons[lastCode]=next;}tray.Icon=next;trayIcon=next;}
     string DetailsText(){
         lock(gate){ThreadState s=reader.Selected(selected);StringBuilder b=new StringBuilder();
             b.AppendLine(Locale.Pick("作者：B站那年松江","Author: B站那年松江"));b.AppendLine(Locale.Pick("任务：","Task: ")+(s==null?Locale.Pick("未选择","Not selected"):reader.Catalog.Name(s.Id)));if(s!=null)b.AppendLine("ID: "+s.Id);
@@ -301,10 +293,13 @@ public partial class MonitorForm : Form {
             b.AppendLine(Locale.Pick("最近异常（所有任务，最多 30 条）","Recent errors (all tasks; up to 30)"));
             if(reader.History.Count==0)b.AppendLine(Locale.Pick("暂无记录","No errors recorded"));
             foreach(string h in reader.History){string translated=h;foreach(string key in new[]{"TLS 握手被中断","连接被对端或链路设备重置 (10054)","TLS 连接意外关闭","连接超时","请求发送失败","回应流中断，Codex 正在尝试恢复"})translated=translated.Replace(key,Locale.T(key));b.AppendLine(translated);}
-            b.AppendLine();b.AppendLine(Locale.Pick("绿色：近期收到模型输出或连接成功。\r\n红色：近期连接失败或重试。\r\n黄色：上次失败，尚未确认恢复。\r\n灰色：证据不足，可能在思考、执行工具或空闲。\r\n蓝色：本轮正常结束。","Green: recent model output or connection success.\r\nRed: recent connection failure or retry.\r\nAmber: previous failure with no confirmed recovery.\r\nGray: insufficient evidence; thinking, tools, or idle.\r\nBlue: turn completed normally."));
-            b.AppendLine();b.AppendLine(Locale.Pick("网络探测只读取响应头，不登录或发送聊天内容。HTTP 401/403 只表示入口响应，不代表模型可用。","Probes read HTTP headers only, without sign-in or chat content. HTTP 401/403 confirms an endpoint response, not model availability."));
-            b.AppendLine(Locale.Pick("探测使用：","Probe route: ")+Locale.T(service.Route));b.AppendLine(Locale.Pick("任务名称优先采用 Codex 本地显示名称；多窗口按最后活动记录跟随，也可手动固定任务。","Task names use Codex's local display names. With multiple windows, the last activity record is followed; a task can also be pinned manually."));
-            b.AppendLine(Locale.Pick("托盘综合状态：系统无可用网络或任务中断为红色；入口传输失败或恢复未确认为黄色。额度状态不影响托盘颜色。","Tray summary: no local network or task interruption is red; failed probes or unconfirmed recovery is amber. Quota never changes tray color."));
+            DisplayState raw=Rules.Evaluate(s,Rules.Now(),reader.Ok);
+            b.AppendLine();b.AppendLine(Locale.Pick("任务日志详情：","Task log detail: ")+Locale.T(raw.Title)+" · "+Locale.T(raw.Detail));
+            b.AppendLine();b.AppendLine(Locale.Pick("绿色：未检测到断开。红色：任务中断、系统无网络或入口传输失败。灰色：无法确认。空闲、思考与本轮结束不再单独变色。","Green: no disconnect detected. Red: task interruption, no local network, or endpoint transport failure. Gray: unconfirmed. Idle, thinking and turn completion have no separate color."));
+            b.AppendLine(Locale.Pick("窗口与托盘使用同一个判断。日志每 0.5 秒检查，网络每 3 秒探测，单次限时 2 秒，各入口独立更新。Windows 网络变化立即触发检查。","Window and tray share one decision. Logs: 0.5s; probes: 3s; deadline: 2s. Endpoints update independently. Windows network changes trigger an immediate check."));
+            b.AppendLine(Locale.Pick("Codex 自身尚未写出错误时，工具不能提前知道。入口探测失败不一定表示模型流已断；401/403 只表示入口响应。只有公共入口失败、ChatGPT 入口仍响应时，不判定 Codex 断开。","The monitor cannot detect a Codex error before it is logged. Failed probes do not prove the model stream is broken; 401/403 are endpoint responses. A public-only failure with a responding ChatGPT endpoint is not a Codex disconnect."));
+            b.AppendLine(Locale.Pick("探测使用：","Probe route: ")+Locale.T(service.Route));
+            b.AppendLine(Locale.Pick("任务错误会保持红色，直到该任务有新的成功记录；额度状态不影响连接颜色。","Task errors stay red until this task records success; quota never changes connection color."));
             b.AppendLine();b.AppendLine(UsageDetails());b.AppendLine(Locale.Pick("关闭窗口收起到托盘；右键托盘图标退出。","Close the window to hide it to the tray; use the tray menu to exit."));return b.ToString();}
     }
     void ShowDetails(){using(Form f=new Form {Text=Locale.Pick("连接记录与说明","Connection history & help"),ClientSize=new Size(620,590),StartPosition=FormStartPosition.CenterScreen,TopMost=true,Font=Font,Icon=Icon}){TextBox box=new TextBox {Multiline=true,ReadOnly=true,Dock=DockStyle.Fill,ScrollBars=ScrollBars.Vertical,Text=DetailsText(),BackColor=Color.White,Font=Font};f.Controls.Add(box);f.ShowDialog(this);}}
@@ -355,12 +350,27 @@ public partial class MonitorForm : Form {
             pin.Checked=false;if(TopMost)throw new Exception("unpin failed");pin.Checked=true;
             hide.PerformClick();if(Visible)throw new Exception("hide failed");Restore();Close();if(Visible || IsDisposed)throw new Exception("close-to-tray failed");Restore();
             if(tray==null || !tray.Visible || tray.Icon==null)throw new Exception("tray icon missing");
-            usage.Success(FeatureTests.Fixture(),Rules.Now());hide.PerformClick();networkAvailable=false;RefreshView();if(lastCode!="error" || Visible)throw new Exception("hidden tray did not reflect offline state");
-            networkAvailable=true;internet=new ProbeResult {Time=Rules.Now(),Reached=false};service=new ProbeResult {Time=Rules.Now(),Reached=true,Status=403};UpdateTray(new DisplayState("ok","Recent response",""));if(lastCode!="warning")throw new Exception("probe failure not amber");
-            internet.Reached=true;UpdateTray(new DisplayState("ok","Recent response",""));if(lastCode!="ok")throw new Exception("403 incorrectly changed tray color");usage.Fail("timeout");UpdateTray(new DisplayState("ok","Recent response",""));if(lastCode!="ok")throw new Exception("quota failure altered connection color");
-            usage.Windows[0].Remaining=0;UpdateTray(new DisplayState("ok","Recent response",""));if(lastCode!="ok")throw new Exception("quota depletion altered connection color");
-            usage.Success(FeatureTests.Fixture(),Rules.Now());RenderUsage();if(!usageRows.Controls.OfType<Label>().Any(l=>l.Text.Contains("83%")))throw new Exception("hidden quota not updated");Restore();
-            File.WriteAllText(output,"PASS: sizes, auto/manual fit, named tasks, menus, bilingual UI, author, pin, tray hide/restore, close-to-tray, hidden tray colors, hidden quota render, 403 and quota failure/depletion isolation.",Encoding.UTF8);
+            usage.Success(FeatureTests.Fixture(),Rules.Now());hide.PerformClick();networkAvailable=false;RefreshView();if(lastCode!="error" || Visible || statusTitle.Text!="连接中断")throw new Exception("hidden tray and window did not reflect offline state");
+            string fixtureId="00000000-0000-0000-0000-000000000001";reader.Ok=true;reader.ActiveThread=fixtureId;selected="";reader.States[fixtureId]=new ThreadState {Id=fixtureId,Last=new Evidence {Id=1,Time=Rules.Now(),Kind="response"}};
+            networkAvailable=true;internet=new ProbeResult {Time=Rules.Now(),Reached=true};service=new ProbeResult {Time=Rules.Now(),Reached=false};RefreshView();if(lastCode!="error" || statusTitle.ForeColor!=StatusColor("error"))throw new Exception("probe failure not immediately red in both indicators");
+            service.Reached=true;service.Status=403;RefreshView();if(lastCode!="ok")throw new Exception("403 incorrectly changed connection color");usage.Fail("timeout");RefreshView();if(lastCode!="ok")throw new Exception("quota failure altered connection color");
+            usage.Windows[0].Remaining=0;RefreshView();if(lastCode!="ok")throw new Exception("quota depletion altered connection color");
+            usage.Success(FeatureTests.Fixture(),Rules.Now());RenderUsage();if(!usageRows.Controls.OfType<Label>().Any(l=>l.Text.Contains("83%")))throw new Exception("hidden quota not updated");
+            using(var releaseRead=new System.Threading.ManualResetEventSlim(false)){
+                LogReader snapshot=reader.Snapshot();readLogsForTest=()=>{releaseRead.Wait(2500);return snapshot;};lastLog=0;PollLogs();
+                try {await Task.Delay(50);networkAvailable=false;var watch=System.Diagnostics.Stopwatch.StartNew();RefreshView();if(lastCode!="error" || watch.ElapsedMilliseconds>1000 || !logBusy)throw new Exception("slow log I/O blocks network indicator");}
+                finally{releaseRead.Set();}
+                while(logBusy)await Task.Delay(10);readLogsForTest=null;
+            }
+            networkAvailable=true;lastProbe=0;
+            var heldProbe=new TaskCompletionSource<ProbeResult>();
+            probeForTest=(isPublic,token)=>isPublic?heldProbe.Task:Task.FromResult(new ProbeResult {Reached=false,Time=Rules.Now()});
+            PollProbes();await Task.Delay(30);
+            try{if(!probeBusy || lastCode!="error" || statusTitle.Text!="连接中断")throw new Exception("fast endpoint failure waits for the slower endpoint");}
+            finally{heldProbe.SetResult(new ProbeResult {Reached=true,Status=200,Time=Rules.Now()});}
+            while(probeBusy)await Task.Delay(10);probeForTest=null;
+            Restore();
+            File.WriteAllText(output,"PASS: sizes, auto/manual fit, named tasks, menus, bilingual UI, author, pin, tray hide/restore, close-to-tray, unified window/tray colors, hidden quota render, slow log isolation, independent endpoint updates, 403 and quota failure/depletion isolation.",Encoding.UTF8);
         }catch(Exception e){File.WriteAllText(output,e.ToString(),Encoding.UTF8);Environment.ExitCode=1;}finally{exit=true;Close();}
     }
 }

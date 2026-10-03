@@ -30,6 +30,7 @@ public sealed class UsageState {
     public string Error="loading";
     string account="";
     public bool Busy;
+    public UsageState Snapshot(){return new UsageState {Windows=new List<UsageWindow>(Windows),Updated=Updated,Attempted=Attempted,Error=Error,account=account,Busy=Busy};}
     public void Account(string identity) {if(account!=identity){account=identity;Windows.Clear();Updated=0;}}
     public void Fail(string error) {Error=error;}
     public void Success(List<UsageWindow> windows,long now) {Windows=windows;Updated=now;Error=windows.Count==0?"empty":"";}
@@ -111,11 +112,11 @@ public sealed class UsageClient : IDisposable {
         if(disposed)throw new UsageException("failed");
         if(process!=null && !process.HasExited)return;
         Stop();string executable=Discover(ExecutablePath);if(executable==null)throw new UsageException("missing");
-        var child=new Process {StartInfo=StartInfo(executable)};process=child;
+        var child=new Process {StartInfo=StartInfo(executable)};
         child.OutputDataReceived+=(s,e)=>ReadLine(e.Data);child.ErrorDataReceived+=(s,e)=>{};
         child.EnableRaisingEvents=true;child.Exited+=(s,e)=>RejectPending();
-        child.Start();child.BeginOutputReadLine();child.BeginErrorReadLine();
-        await Call("initialize",new {clientInfo=new {name="codex_connection_monitor",title="Codex Connection Monitor",version="1.3.1"}});
+        lock(sync){if(disposed){child.Dispose();throw new UsageException("failed");}process=child;child.Start();child.BeginOutputReadLine();child.BeginErrorReadLine();}
+        await Call("initialize",new {clientInfo=new {name="codex_connection_monitor",title="Codex Connection Monitor",version="1.4.0"}});
         child.StandardInput.WriteLine(serializer.Serialize(new {method="initialized",@params=new {}}));child.StandardInput.Flush();
     }
     void ReadLine(string line) {
@@ -149,17 +150,7 @@ public sealed class UsageClient : IDisposable {
         finally{Stop();} // A fresh child observes sign-in and system-proxy changes on the next refresh.
     }
     void RejectPending(){lock(sync){foreach(var c in pending.Values)c.TrySetException(new UsageException("failed"));pending.Clear();}}
-    void Stop(){var child=process;process=null;if(child!=null){try{if(!child.HasExited)child.Kill();}catch{}try{child.WaitForExit(1000);}catch{}child.Dispose();}RejectPending();}
-    public void Dispose(){disposed=true;Stop();}
-}
-public static class TrayRules {
-    public static DisplayState Evaluate(DisplayState task,bool? networkAvailable,ProbeResult internet,ProbeResult service,long now) {
-        if(networkAvailable==false)return new DisplayState("error",Locale.Pick("本机无可用网络连接","No local network connection"),"");
-        if(task.Code=="error")return task;
-        bool a=Failed(internet,now),b=Failed(service,now);
-        if(a||b)return new DisplayState("warning",a&&b?Locale.Pick("两个入口探测异常","Both endpoint probes failed"):a?Locale.Pick("公共入口探测异常","Public endpoint probe failed"):Locale.Pick("ChatGPT 入口探测异常","ChatGPT endpoint probe failed"),"");
-        return task;
-    }
-    static bool Failed(ProbeResult result,long now){return result!=null && result.Time>0 && now-result.Time>=0 && now-result.Time<=35 && !result.Reached;}
+    void Stop(){Process child;lock(sync){child=process;process=null;}if(child!=null){try{if(!child.HasExited)child.Kill();}catch{}try{child.WaitForExit(1000);}catch{}child.Dispose();}RejectPending();}
+    public void Dispose(){lock(sync)disposed=true;Stop();}
 }
 }

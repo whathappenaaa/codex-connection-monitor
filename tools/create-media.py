@@ -58,13 +58,13 @@ def main():
     c.text(88,446,'额度还剩多少？',101,'#f4f8fb',True)
     c.text(94,555,'托盘看状态 · 窗口看额度',43,'#adc3d0')
     c.rect(94,625,998,112,'#18303d',26)
-    c.text(126,696,'Codex 连接灯  1.3',53,'#9ce4c8',True)
+    c.text(126,696,'Codex 连接灯  1.4',53,'#9ce4c8',True)
     c.text(94,948,'B站那年松江',43,'#f4f8fb',True)
     c.text(94,1010,'独立工具 · MIT 许可证 · 状态以实际证据为准',27,'#adc3d0')
     c.rect(1205,150,610,720,'#f1f6f7',32)
     c.text(1250,238,'连接状态',40,'#1b2f36',True)
-    for idx,(name,color,kind) in enumerate([('有回应','#128968','green'),('异常','#cc3d49','red'),('待确认','#a7691b','yellow')]):
-        x=1300+idx*190;icon(c,x,334,49,color,kind);c.text(x-51,426,name,30,'#1b2f36',True)
+    for idx,(name,color,kind) in enumerate([('未检测断开','#128968','green'),('连接中断','#cc3d49','red'),('无法确认','#718287','gray')]):
+        x=1300+idx*190;icon(c,x,334,49,color,kind);c.text(x-70,426,name,25,'#1b2f36',True)
     c.rect(1245,481,530,281,'#ffffff',20)
     c.text(1280,551,'账号共享额度',33,'#6a7980')
     c.text(1280,626,'剩余比例  +  重置时间',31,'#1b2f36',True)
@@ -72,11 +72,11 @@ def main():
     c.text(1265,827,'功能示意 · 非实时数据',27,'#6a7980')
     c.save(ROOT/'docs/video','cover')
 
-    s=Canvas(1200,510,'#f1f6f7');s.text(38,56,'托盘综合状态 · 颜色与符号',33,'#1b2f36',True)
+    s=Canvas(1200,510,'#f1f6f7');s.text(38,56,'窗口与托盘同步 · 断开提示',33,'#1b2f36',True)
     s.rect(20,260,1160,184,'#142431',16)
-    states=[('红色 / 中断','#cc3d49','red'),('黄色 / 异常','#a7691b','yellow'),('绿色 / 有回应','#128968','green'),('蓝色 / 本轮结束','#3574a4','blue'),('灰色 / 未知','#718287','gray')]
+    states=[('红色 / 连接中断','#cc3d49','red'),('绿色 / 未检测到断开','#128968','green'),('灰色 / 无法确认','#718287','gray')]
     for i,(name,color,kind) in enumerate(states):
-        x=127+i*235;icon(s,x,136,40,color,kind);s.text(x-90,219,name,25,'#1b2f36',True);icon(s,x,314,28,color,kind);s.text(x-90,395,name,25,'#ffffff',True)
+        x=210+i*390;icon(s,x,136,40,color,kind);s.text(x-135,219,name,25,'#1b2f36',True);icon(s,x,314,28,color,kind);s.text(x-135,395,name,25,'#ffffff',True)
     s.text(35,486,'状态示意；HTTP 403 和额度刷新失败不会让托盘变红。',24,'#526770')
     s.save(ROOT/'docs/images','tray-states')
     capture=ROOT/'artifacts/tests/layouts/medium-zh-100.png'

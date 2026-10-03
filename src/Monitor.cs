@@ -119,29 +119,35 @@ public class LogReader {
     string desktopFile="";
     public bool DesktopLogAvailable {get{return File.Exists(desktopFile);}}
     public bool DesktopLogPackaged {get{return DesktopLogSource.IsPackaged(desktopFile);}}
-    long desktopOffset;
-    string partial="";
+    readonly DesktopActivityReader activity=new DesktopActivityReader();
     static readonly Regex ActivePattern=new Regex(@"thread_stream_view_activity_changed active=true conversationId=([a-fA-F0-9-]{36})\b");
     public static string ActiveFromLine(string line) { Match m=ActivePattern.Match(line); return m.Success?m.Groups[1].Value:""; }
+    public LogReader Snapshot(){
+        var copy=new LogReader {Ok=Ok,Error=Error,ActiveThread=ActiveThread,DatabasePath=DatabasePath,Checked=Checked,desktopFile=desktopFile};
+        copy.States=States.ToDictionary(pair=>pair.Key,pair=>new ThreadState {Id=pair.Value.Id,Last=pair.Value.Last,Failure=pair.Value.Failure,LastResponse=pair.Value.LastResponse});
+        copy.History=new List<string>(History);
+        copy.Catalog.Items=new Dictionary<string,TaskInfo>(Catalog.Items);copy.Catalog.Available=Catalog.Available;
+        return copy;
+    }
+    public static string EventsQuery(long after,long through){return "SELECT id,ts,thread_id,"+LogDatabase.Classify+","+LogDatabase.Reason+",'' FROM logs WHERE id>"+after+" AND id<="+through+" AND thread_id IS NOT NULL AND target IN ('codex_core::responses_retry','codex_api::endpoint::responses_websocket','codex_core::stream_events_utils','codex_core::session::turn') AND ("+LogDatabase.Classify+")<>'' ORDER BY id DESC LIMIT 4000";}
     public void Poll() {
         try {
             string codex=Environment.GetEnvironmentVariable("CODEX_HOME");
             if(String.IsNullOrEmpty(codex)) codex=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".codex");
             Catalog.Refresh(codex);
-            if((DateTime.UtcNow-discovery).TotalSeconds>10) {
+            if((DateTime.UtcNow-discovery).TotalSeconds>=2) {
                 discovery=DateTime.UtcNow;
                 string found=Directory.GetFiles(codex,"logs_*.sqlite").OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
                 if(found==null) throw new IOException("没有找到 Codex 日志数据库");
                 if(found!=DatabasePath) { DatabasePath=found; cursor=-1; States.Clear(); }
                 string f=DesktopLogSource.Find(DesktopLogSource.Roots(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)));
-                if(f!=null && f!=desktopFile) { desktopFile=f; desktopOffset=0; partial=""; ActiveThread=""; }
+                if(f!=null)desktopFile=f;
             }
             ReadActive();
             using(LogDatabase db=new LogDatabase(DatabasePath)) {
                 long max=Int64.Parse(db.Query("SELECT COALESCE(MAX(id),0),'','','','','' FROM logs")[0][0]);
                 if(cursor<0 || cursor>max) { cursor=Math.Max(0,max-10000); States.Clear(); }
-                string sql="SELECT id,ts,thread_id,"+LogDatabase.Classify+","+LogDatabase.Reason+",'' FROM logs WHERE id>"+cursor+" AND id<="+max+" AND thread_id IS NOT NULL AND target IN ('codex_core::responses_retry','codex_api::endpoint::responses_websocket','codex_core::stream_events_utils','codex_core::session::turn') ORDER BY id ASC LIMIT 4000";
-                List<string[]> rows=db.Query(sql);
+                List<string[]> rows=db.Query(EventsQuery(cursor,max));rows.Reverse();
                 foreach(string[] row in rows) {
                     cursor=Int64.Parse(row[0]); if(row[3]=="") continue;
                     Evidence e=new Evidence { Id=cursor,Time=Int64.Parse(row[1]),Thread=row[2],Kind=row[3],Reason=row[4] };
@@ -152,29 +158,12 @@ public class LogReader {
                         History.Insert(0,h); if(History.Count>30) History.RemoveAt(30);
                     }
                 }
-                if(rows.Count<4000) cursor=max;
+                cursor=max;
             }
             Ok=true; Error=""; Checked=Rules.Now();
         } catch(Exception e) { Ok=false; Error=e is IOException?e.Message:"日志读取暂不可用"; Checked=Rules.Now(); }
     }
-    void ReadActive() {
-        if(!File.Exists(desktopFile)) return;
-        using(FileStream fs=new FileStream(desktopFile,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete)) {
-            if(desktopOffset>fs.Length) { desktopOffset=0; partial=""; }
-            // The active-task event may precede megabytes of subsequent log output.
-            // Initial discovery streams the complete main log instead of guessing a different task.
-            fs.Position=desktopOffset;
-            long end=fs.Length;
-            while(fs.Position<end) {
-                byte[] bytes=new byte[(int)Math.Min(128*1024,end-fs.Position)];
-                int count=fs.Read(bytes,0,bytes.Length);if(count==0)break;desktopOffset+=count;
-                string text=partial+Encoding.UTF8.GetString(bytes,0,count);
-                int last=text.LastIndexOf('\n'); if(last<0) { partial=text.Length>1024*1024?"":text;continue; }
-                partial=text.Substring(last+1);
-                foreach(string line in text.Substring(0,last).Split('\n')) { string a=ActiveFromLine(line); if(a!="") ActiveThread=a; }
-            }
-        }
-    }
+    void ReadActive(){activity.Poll(desktopFile);ActiveThread=activity.ActiveThread;}
     public ThreadState Selected(string selected) {
         string id=selected;
         if(id=="") id=ActiveThread;
@@ -190,43 +179,6 @@ public class ProbeResult {
     public string Error="", Route="系统代理设置";
     public string Text { get { return Time==0?"检测中…":Reached?"HTTP "+Status+"  ·  "+Ms+" ms":Error; } }
 }
-public static class Probes {
-    public static async Task<ProbeResult> Run(string url) {
-        ProbeResult p=new ProbeResult(); Stopwatch watch=Stopwatch.StartNew(); HttpWebRequest req=null;
-        try {
-            req=(HttpWebRequest)WebRequest.Create(url); req.Method="HEAD"; req.Timeout=6500; req.ReadWriteTimeout=6500;
-            req.AllowAutoRedirect=false; req.UserAgent="CodexConnectionMonitor/1.3.1"; req.KeepAlive=false;
-            string proxy=Environment.GetEnvironmentVariable("HTTPS_PROXY")??Environment.GetEnvironmentVariable("https_proxy");
-            Uri proxyUri;
-            if(!String.IsNullOrEmpty(proxy) && Uri.TryCreate(proxy,UriKind.Absolute,out proxyUri)) {
-                if(proxyUri.Scheme=="http" || proxyUri.Scheme=="https") { req.Proxy=new WebProxy(proxyUri); p.Route="HTTPS_PROXY 环境设置"; }
-                else p.Route="系统设置（未使用 SOCKS 环境代理）";
-            }
-            Task<WebResponse> response=req.GetResponseAsync();
-            if(await Task.WhenAny(response,Task.Delay(6500))!=response) {
-                req.Abort();
-                ObserveFailure(response);
-                p.Error="探测超时"; return p;
-            }
-            using(HttpWebResponse r=(HttpWebResponse)await response) { p.Reached=true; p.Status=(int)r.StatusCode; }
-        } catch(WebException e) {
-            HttpWebResponse r=e.Response as HttpWebResponse;
-            if(r!=null) { using(r) { p.Reached=true; p.Status=(int)r.StatusCode; } }
-            else {
-                switch(e.Status) {
-                    case WebExceptionStatus.NameResolutionFailure: case WebExceptionStatus.ProxyNameResolutionFailure: p.Error="DNS 解析失败"; break;
-                    case WebExceptionStatus.TrustFailure: case WebExceptionStatus.SecureChannelFailure: p.Error="TLS / 证书连接失败"; break;
-                    case WebExceptionStatus.Timeout: case WebExceptionStatus.RequestCanceled: p.Error="探测超时"; break;
-                    default: p.Error="连接失败（探测路径）"; break;
-                }
-            }
-        } catch(Exception) { p.Error="探测不可用"; }
-        finally { watch.Stop(); p.Ms=watch.ElapsedMilliseconds; p.Time=Rules.Now(); }
-        return p;
-    }
-    static void ObserveFailure(Task task) { task.ContinueWith(t=>{var ignored=t.Exception;},TaskContinuationOptions.OnlyOnFaulted); }
-}
-
 public static class Program {
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
     static Mutex mutex;
@@ -238,7 +190,7 @@ public static class Program {
         if(args.Length>=2 && args[0]=="--diagnose") {
             LogReader r=new LogReader();r.Poll();ThreadState s=r.Selected("");
             ProbeResult[] probes=Task.WhenAll(Probes.Run("https://www.microsoft.com/favicon.ico"),Probes.Run("https://chatgpt.com/")).GetAwaiter().GetResult();
-            File.WriteAllText(args[1],new JavaScriptSerializer().Serialize(new {sourceOk=r.Ok,sourceError=r.Error,desktopLogAvailable=r.DesktopLogAvailable,desktopLogPackaged=r.DesktopLogPackaged,activeThread=r.ActiveThread,taskName=s==null?"":r.Catalog.Name(s.Id),catalogAvailable=r.Catalog.Available,trackedThreads=r.States.Count,status=Rules.Evaluate(s,Rules.Now(),r.Ok),lastResponse=s==null?0:s.LastResponse,publicProbe=probes[0],chatgptProbe=probes[1]}),Encoding.UTF8);return;
+            File.WriteAllText(args[1],new JavaScriptSerializer().Serialize(new {sourceOk=r.Ok,sourceError=r.Error,desktopLogAvailable=r.DesktopLogAvailable,desktopLogPackaged=r.DesktopLogPackaged,activeThread=r.ActiveThread,taskName=s==null?"":r.Catalog.Name(s.Id),catalogAvailable=r.Catalog.Available,trackedThreads=r.States.Count,status=Rules.Evaluate(s,Rules.Now(),r.Ok),connectionStatus=ConnectionRules.Evaluate(s,r.Ok,NetworkInterface.GetIsNetworkAvailable(),probes[0],probes[1],Rules.Now()),lastResponse=s==null?0:s.LastResponse,publicProbe=probes[0],chatgptProbe=probes[1]}),Encoding.UTF8);return;
         }
         string capture=args.Length>=2 && args[0]=="--capture"?args[1]:null;
         bool test=args.Length>=2 && (args[0]=="--ui-test" || args[0]=="--layout-test");
@@ -316,7 +268,7 @@ public static class Tests {
                 var codec=new JavaScriptSerializer();MonitorSettings roundTrip=codec.Deserialize<MonitorSettings>(codec.Serialize(new MonitorSettings {language="en",size="medium",autoFit=false}));
                 Check(roundTrip.language=="en" && roundTrip.size=="medium" && !roundTrip.autoFit,"language and size settings persist together");
             }
-            int featureCount=FeatureTests.Run();int desktopCount=DesktopLogTests.Run();File.WriteAllText(output,"PASS "+count+" legacy + "+featureCount+" tray/quota + "+desktopCount+" desktop log tests",Encoding.UTF8);
+            int featureCount=FeatureTests.Run();int desktopCount=DesktopLogTests.Run();int connectionCount=ConnectionTests.Run();File.WriteAllText(output,"PASS "+count+" legacy + "+featureCount+" quota + "+desktopCount+" desktop log + "+connectionCount+" connection/timing tests",Encoding.UTF8);
         } catch(Exception e) {File.WriteAllText(output,e.ToString(),Encoding.UTF8);Environment.ExitCode=1;}
     }
 }

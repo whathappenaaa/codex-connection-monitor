@@ -6,22 +6,21 @@
 <text x="88" y="446" font-family="Microsoft YaHei, sans-serif" font-size="101" font-weight="700" fill="#f4f8fb">额度还剩多少？</text>
 <text x="94" y="555" font-family="Microsoft YaHei, sans-serif" font-size="43" font-weight="400" fill="#adc3d0">托盘看状态 · 窗口看额度</text>
 <rect x="94" y="625" width="998" height="112" rx="26" fill="#18303d"/>
-<text x="126" y="696" font-family="Microsoft YaHei, sans-serif" font-size="53" font-weight="700" fill="#9ce4c8">Codex 连接灯  1.3</text>
+<text x="126" y="696" font-family="Microsoft YaHei, sans-serif" font-size="53" font-weight="700" fill="#9ce4c8">Codex 连接灯  1.4</text>
 <text x="94" y="948" font-family="Microsoft YaHei, sans-serif" font-size="43" font-weight="700" fill="#f4f8fb">B站那年松江</text>
 <text x="94" y="1010" font-family="Microsoft YaHei, sans-serif" font-size="27" font-weight="400" fill="#adc3d0">独立工具 · MIT 许可证 · 状态以实际证据为准</text>
 <rect x="1205" y="150" width="610" height="720" rx="32" fill="#f1f6f7"/>
 <text x="1250" y="238" font-family="Microsoft YaHei, sans-serif" font-size="40" font-weight="700" fill="#1b2f36">连接状态</text>
 <circle cx="1300" cy="334" r="49" fill="#128968"/>
 <polyline points="1269,337 1285,337 1294,316 1306,355 1318,334 1331,334" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1249" y="426" font-family="Microsoft YaHei, sans-serif" font-size="30" font-weight="700" fill="#1b2f36">有回应</text>
+<text x="1230" y="426" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">未检测断开</text>
 <circle cx="1490" cy="334" r="49" fill="#cc3d49"/>
 <polyline points="1472,316 1508,352" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 <polyline points="1508,316 1472,352" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="1439" y="426" font-family="Microsoft YaHei, sans-serif" font-size="30" font-weight="700" fill="#1b2f36">异常</text>
-<circle cx="1680" cy="334" r="49" fill="#a7691b"/>
-<polyline points="1680,310 1680,340" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="1680" cy="358" r="5" fill="#ffffff"/>
-<text x="1629" y="426" font-family="Microsoft YaHei, sans-serif" font-size="30" font-weight="700" fill="#1b2f36">待确认</text>
+<text x="1420" y="426" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">连接中断</text>
+<circle cx="1680" cy="334" r="49" fill="#718287"/>
+<polyline points="1662,334 1698,334" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1610" y="426" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">无法确认</text>
 <rect x="1245" y="481" width="530" height="281" rx="20" fill="#ffffff"/>
 <text x="1280" y="551" font-family="Microsoft YaHei, sans-serif" font-size="33" font-weight="400" fill="#6a7980">账号共享额度</text>
 <text x="1280" y="626" font-family="Microsoft YaHei, sans-serif" font-size="31" font-weight="700" fill="#1b2f36">剩余比例  +  重置时间</text>

@@ -1,40 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="510" viewBox="0 0 1200 510">
 <rect width="100%" height="100%" fill="#f1f6f7"/>
-<text x="38" y="56" font-family="Microsoft YaHei, sans-serif" font-size="33" font-weight="700" fill="#1b2f36">托盘综合状态 · 颜色与符号</text>
+<text x="38" y="56" font-family="Microsoft YaHei, sans-serif" font-size="33" font-weight="700" fill="#1b2f36">窗口与托盘同步 · 断开提示</text>
 <rect x="20" y="260" width="1160" height="184" rx="16" fill="#142431"/>
-<circle cx="127" cy="136" r="40" fill="#cc3d49"/>
-<polyline points="112,121 142,151" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<polyline points="142,121 112,151" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="37" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">红色 / 中断</text>
-<circle cx="127" cy="314" r="28" fill="#cc3d49"/>
-<polyline points="116,304 138,324" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-<polyline points="138,304 116,324" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="37" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">红色 / 中断</text>
-<circle cx="362" cy="136" r="40" fill="#a7691b"/>
-<polyline points="362,116 362,141" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="362" cy="156" r="4" fill="#ffffff"/>
-<text x="272" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">黄色 / 异常</text>
-<circle cx="362" cy="314" r="28" fill="#a7691b"/>
-<polyline points="362,300 362,318" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="362" cy="328" r="3" fill="#ffffff"/>
-<text x="272" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">黄色 / 异常</text>
-<circle cx="597" cy="136" r="40" fill="#128968"/>
-<polyline points="572,138 584,138 592,121 602,154 612,136 622,136" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="507" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">绿色 / 有回应</text>
-<circle cx="597" cy="314" r="28" fill="#128968"/>
-<polyline points="580,316 588,316 594,304 600,326 608,314 614,314" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="507" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">绿色 / 有回应</text>
-<circle cx="832" cy="136" r="40" fill="#3574a4"/>
-<polyline points="817,136 827,146 850,124" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="742" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">蓝色 / 本轮结束</text>
-<circle cx="832" cy="314" r="28" fill="#3574a4"/>
-<polyline points="822,314 828,321 844,305" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="742" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">蓝色 / 本轮结束</text>
-<circle cx="1067" cy="136" r="40" fill="#718287"/>
-<polyline points="1052,136 1082,136" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="977" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">灰色 / 未知</text>
-<circle cx="1067" cy="314" r="28" fill="#718287"/>
-<polyline points="1056,314 1078,314" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="977" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">灰色 / 未知</text>
+<circle cx="210" cy="136" r="40" fill="#cc3d49"/>
+<polyline points="195,121 225,151" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="225,121 195,151" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="75" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">红色 / 连接中断</text>
+<circle cx="210" cy="314" r="28" fill="#cc3d49"/>
+<polyline points="200,304 220,324" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="220,304 200,324" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="75" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">红色 / 连接中断</text>
+<circle cx="600" cy="136" r="40" fill="#128968"/>
+<polyline points="575,138 588,138 595,121 605,154 615,136 625,136" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="465" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">绿色 / 未检测到断开</text>
+<circle cx="600" cy="314" r="28" fill="#128968"/>
+<polyline points="582,316 591,316 596,304 604,326 610,314 618,314" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="465" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">绿色 / 未检测到断开</text>
+<circle cx="990" cy="136" r="40" fill="#718287"/>
+<polyline points="975,136 1005,136" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="855" y="219" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#1b2f36">灰色 / 无法确认</text>
+<circle cx="990" cy="314" r="28" fill="#718287"/>
+<polyline points="980,314 1000,314" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="855" y="395" font-family="Microsoft YaHei, sans-serif" font-size="25" font-weight="700" fill="#ffffff">灰色 / 无法确认</text>
 <text x="35" y="486" font-family="Microsoft YaHei, sans-serif" font-size="24" font-weight="400" fill="#526770">状态示意；HTTP 403 和额度刷新失败不会让托盘变红。</text>
 </svg>

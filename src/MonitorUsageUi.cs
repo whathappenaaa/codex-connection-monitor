@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
+using System.Threading.Tasks;
 
 namespace ConnectionMonitor {
 public partial class MonitorForm {
@@ -17,14 +18,15 @@ public partial class MonitorForm {
     string usageUiKey="";bool? networkAvailable;bool monitoringClosed;
     Dictionary<string,Icon> trayIcons=new Dictionary<string,Icon>();
     void BuildUsageCard(){usageCard=Card();usageCaption=Wrap(8.5f,true,Muted);usageRows=Stack(1);usageStatus=Wrap(8,false,Muted);Add(usageCard,usageCaption);Add(usageCard,usageRows);Add(usageCard,usageStatus);Add(root,usageCard);}
-    void StartNetworkObserver(){if(testing)return;try{networkAvailable=NetworkInterface.GetIsNetworkAvailable();NetworkChange.NetworkAvailabilityChanged+=NetworkChanged;}catch{networkAvailable=null;}}
-    void NetworkChanged(object sender,NetworkAvailabilityEventArgs args){if(monitoringClosed || !IsHandleCreated || IsDisposed)return;try{BeginInvoke((Action)(()=>{if(monitoringClosed)return;networkAvailable=args.IsAvailable;lastProbe=0;RefreshView();Poll();}));}catch(InvalidOperationException){}}
-    void StopMonitoring(){monitoringClosed=true;NetworkChange.NetworkAvailabilityChanged-=NetworkChanged;usageClient.Dispose();foreach(Icon icon in trayIcons.Values)icon.Dispose();trayIcons.Clear();}
+    void StartNetworkObserver(){if(testing)return;try{networkAvailable=NetworkInterface.GetIsNetworkAvailable();NetworkChange.NetworkAvailabilityChanged+=NetworkChanged;NetworkChange.NetworkAddressChanged+=NetworkAddressChanged;}catch{networkAvailable=null;}}
+    void NetworkChanged(object sender,NetworkAvailabilityEventArgs args){QueueNetworkChange(args.IsAvailable);}
+    void StopMonitoring(){monitoringClosed=true;NetworkChange.NetworkAvailabilityChanged-=NetworkChanged;NetworkChange.NetworkAddressChanged-=NetworkAddressChanged;probeCancellation.Cancel();probeCancellation.Dispose();usageClient.Dispose();foreach(Icon icon in trayIcons.Values)icon.Dispose();trayIcons.Clear();}
     void CheckNow(){lastProbe=lastLog=0;PollUsage(true);Poll();}
     async void PollUsage(bool manual){
         if(testing || monitoringClosed || !usage.Due(Rules.Now(),manual))return;
         usage.Busy=true;usage.Attempted=Rules.Now();
-        try{await usageClient.Refresh(usage);}finally{usage.Busy=false;if(!monitoringClosed && !IsDisposed)RefreshView();}
+        UsageState next=usage.Snapshot();
+        try{await Task.Run(()=>usageClient.Refresh(next));if(!monitoringClosed)usage=next;}finally{usage.Busy=false;if(!monitoringClosed && !IsDisposed)RefreshView();}
     }
     void SelectCodex(){
         if(usage.Busy){MessageBox.Show(Locale.Pick("请等本次额度刷新结束后再选择。","Wait for the current quota refresh to finish."),Text);return;}

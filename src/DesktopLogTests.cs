@@ -33,6 +33,17 @@ public static class DesktopLogTests {
             string newer=Path.Combine(normal,"codex-desktop-00000000-0000-0000-0000-000000000003-2-t0-i1-000000-0.log");
             File.WriteAllText(newer,"");File.SetLastWriteTimeUtc(newer,DateTime.UtcNow.AddMinutes(2));
             Check(DesktopLogSource.Find(roots)==newer,"empty new session must not borrow an old task");
+            var activity=new DesktopActivityReader();activity.Poll(redirected);
+            Check(activity.ActiveThread=="00000000-0000-0000-0000-000000000002","initial activity read");
+            string rotated=Path.Combine(packaged,name.Replace("-0.log","-1.log"));File.WriteAllText(rotated,"ordinary log line\n");activity.Poll(rotated);
+            Check(activity.ActiveThread=="00000000-0000-0000-0000-000000000002","live rotation keeps the current task");
+            var restarted=new DesktopActivityReader();restarted.Poll(rotated);
+            Check(restarted.ActiveThread==activity.ActiveThread,"cold start finds activity in previous part of same session");
+            string changed=line.Replace("000000000002","000000000004");File.AppendAllText(rotated,changed.TrimEnd('\n'));activity.Poll(rotated);
+            Check(activity.ActiveThread=="00000000-0000-0000-0000-000000000002","partial line is held until complete");
+            File.AppendAllText(rotated,"\n");activity.Poll(rotated);
+            Check(activity.ActiveThread=="00000000-0000-0000-0000-000000000004","new task updates from rotated file");
+            activity.Poll(newer);Check(activity.ActiveThread=="","new desktop session cannot inherit old task");
             return count;
         } finally {
             string parent=Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;

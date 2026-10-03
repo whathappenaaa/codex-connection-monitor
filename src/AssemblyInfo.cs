@@ -4,5 +4,5 @@ using System.Reflection;
 [assembly: AssemblyCompany("B站那年松江")]
 [assembly: AssemblyProduct("Codex Link Monitor")]
 [assembly: AssemblyCopyright("B站那年松江")]
-[assembly: AssemblyVersion("1.3.1.0")]
-[assembly: AssemblyFileVersion("1.3.1.0")]
+[assembly: AssemblyVersion("1.4.0.0")]
+[assembly: AssemblyFileVersion("1.4.0.0")]

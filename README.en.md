@@ -10,17 +10,19 @@ Extract the ZIP and run `CodexConnectionMonitor.exe`. No Python, Node.js or API 
 
 Close hides to the tray; double-click restores; right-click offers check, executable selection and exit. Monitoring continues while hidden. Three window sizes, automatic height fitting, pinning and instant Chinese/English switching are included.
 
-## Tray colors
+## Connection status
 
-Priority: red → amber → green → blue → gray.
+The window and tray now show the same decision:
 
-- **Red ×:** no local network reported by Windows, or a recent explicit interruption/retry in the selected task.
-- **Amber !:** a fresh endpoint transport failure, or an earlier task failure without confirmed recovery.
-- **Green pulse:** recent model output or connection success.
-- **Blue check:** the turn completed normally.
-- **Gray dash:** insufficient evidence, unreadable logs or an unidentified task.
+- **Red × — Disconnected:** Windows has no network, this task has an unresolved interruption, or the ChatGPT endpoint transport probe failed. Read the reason: a failed endpoint probe alone does not prove the model stream broke.
+- **Green pulse — No disconnect detected:** no unresolved task failure, with recent successful task activity or an endpoint response.
+- **Gray dash — Unconfirmed:** missing/unreadable/expired evidence or a network transition awaiting confirmation.
 
-HTTP 401/403 are endpoint responses, not transport disconnections. Quota depletion and quota refresh errors never alter tray connection colors. The task card remains task-specific, while the tray aggregates network and task evidence. Green is not a continuous-online guarantee; silence is not proof of a disconnect.
+Idle, thinking and turn completion have no separate color. A task failure stays red until that task logs success. A public-only probe failure does not override a responding ChatGPT endpoint. HTTP 401/403 are transport responses. Quota never changes connection color.
+
+Logs are checked every 0.5s, probes every 3s with a 2s deadline, and Windows network changes trigger immediate checks. Each endpoint publishes independently; slow log/quota I/O cannot block the network indicator. Old in-flight probe results are discarded after network changes.
+
+The probe schedule budgets roughly 0–5.5s to surface endpoint failures, not a real-world latency guarantee. System load can add delay, and Codex stream errors cannot be seen until Codex writes them. No model requests are sent to test connectivity. Green never guarantees a continuously working chat.
 
 ## Quota and privacy
 
@@ -28,7 +30,7 @@ Quota uses the official local `codex app-server` account interface and existing 
 
 Missing values stay unavailable. Failed refreshes retain a clearly marked old snapshot; reset times do not automatically refill a quota. Quotas are shared across tasks, and account changes clear the preceding snapshot. No raw account response or credentials are persisted by this app. Official Codex behavior remains subject to its own settings.
 
-Connection evidence and task names are read locally from Codex SQLite databases and desktop logs. Two unauthenticated HEAD probes access Microsoft and ChatGPT public endpoints every 15 seconds. There is no custom backend, chat upload, or application telemetry. The endpoints still receive ordinary connection metadata. Settings are stored beside the executable. Classified error history and quota snapshots remain in memory.
+Connection evidence and task names are read locally from Codex SQLite databases and desktop logs. Two unauthenticated HEAD probes access Microsoft and ChatGPT public endpoints every 3 seconds. There is no custom backend, chat upload, or application telemetry. The endpoints still receive ordinary connection metadata. Settings are stored beside the executable. Classified error history and quota snapshots remain in memory.
 
 Version 1.3.1 checks both `%LOCALAPPDATA%\Codex\Logs` and the explicit `%LOCALAPPDATA%\Packages\OpenAI.Codex_*\LocalCache\Local\Codex\Logs` cache. This fixes Store installations that leave an empty ordinary-path placeholder when the monitor is launched independently from Explorer. Missing current-task evidence still stays unknown instead of borrowing another task's status.
 
